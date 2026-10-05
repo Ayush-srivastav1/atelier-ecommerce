@@ -14,6 +14,10 @@ const validate=f=>{const e={},v=k=>f[k].trim();
  return e};
 const post=async(url,body)=>{const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Something went wrong. Please try again.');return d};
 
+// Defined at module level so its identity is stable across renders (defining it inside Checkout remounts every input on each keystroke).
+function Field({ctl,k,label,type='text',children,...r}){const {form,set,show,touch}=ctl;const err=show(k);
+ return <div><label htmlFor={k} className="mb-1 block text-sm font-medium">{label}</label>{children||<input id={k} type={type} value={form[k]} onChange={set(k)} onBlur={()=>touch(k)} aria-invalid={!!err} aria-describedby={`${k}-e`} className={`input ${err?'border-red-500':''}`} {...r}/>}<p id={`${k}-e`} role={err?'alert':undefined} className="mt-1 min-h-4 text-xs text-red-600">{err||''}</p></div>}
+
 export function Summary({items,subtotal,delivery,total}){const Row=({l,v,b})=><div className={`flex justify-between ${b?'border-t pt-3 text-lg font-bold':''}`}><span>{l}</span><span>{v}</span></div>;
  return <><ul className="divide-y">{items.map(i=><li key={i.key||i.id+i.size+i.color} className="flex gap-3 py-3"><SafeImage src={i.image} alt={i.name} className="h-16 w-14 rounded-lg"/><div className="flex-1 text-sm"><p className="font-medium">{i.name}</p><p className="text-xs text-ink/50">{[i.size&&`Size ${i.size}`,i.color,`Qty ${i.qty}`].filter(Boolean).join(' · ')}</p><p className="text-xs text-ink/50">{$(i.price)} each</p></div><span className="text-sm font-bold">{$(i.price*i.qty)}</span></li>)}</ul>
  <div className="mt-3 space-y-2"><Row l="Subtotal" v={$(subtotal)}/><Row l="Delivery" v={delivery?$(delivery):'FREE'}/><Row b l="Total" v={$(total)}/></div></>}
@@ -22,8 +26,8 @@ export default function Checkout(){const c=useCart();const nav=useNavigate();
  const [form,setForm]=useState(EMPTY);const [touched,setTouched]=useState({});const [busy,setBusy]=useState(false);const [error,setError]=useState('');const lock=useRef(false);const failure=useRef('');
  const errors=validate(form);const show=k=>touched[k]&&errors[k];
  const set=k=>e=>setForm(f=>({...f,[k]:e.target.value}));
+ const ctl={form,set,show,touch:k=>setTouched(t=>({...t,[k]:true}))};
  if(!c.items.length)return <div className="container-x py-24 text-center"><h1 className="h-display text-3xl">Your cart is empty</h1><p className="mt-2 text-ink/60">Add something you like before checking out.</p><Link to="/shop" className="btn-primary mt-6">Continue Shopping</Link></div>;
- const Field=({k,label,type='text',children,...r})=><div><label htmlFor={k} className="mb-1 block text-sm font-medium">{label}</label>{children||<input id={k} type={type} value={form[k]} onChange={set(k)} onBlur={()=>setTouched(t=>({...t,[k]:true}))} aria-invalid={!!show(k)} aria-describedby={`${k}-e`} className={`input ${show(k)?'border-red-500':''}`} {...r}/>}<p id={`${k}-e`} role={show(k)?'alert':undefined} className="mt-1 min-h-4 text-xs text-red-600">{show(k)||''}</p></div>;
 
  const finish=(order,snap)=>{const data={order,...snap};try{sessionStorage.setItem('lastOrder',JSON.stringify(data))}catch{}nav('/order-success',{replace:true,state:data});c.clear()};
  const pay=async()=>{if(lock.current)return;setTouched(Object.fromEntries(Object.keys(EMPTY).map(k=>[k,true])));if(Object.keys(errors).length){setError('Please fix the highlighted fields.');return}
@@ -42,10 +46,10 @@ export default function Checkout(){const c=useCart();const nav=useNavigate();
 
  return <div className="container-x py-10"><h1 className="h-display mb-6 text-3xl">Checkout</h1>
  <div className="grid gap-8 lg:grid-cols-[1fr_380px]"><form noValidate onSubmit={e=>{e.preventDefault();pay()}} className="space-y-6">
-  <section className="rounded-2xl bg-white p-6"><h2 className="mb-4 font-medium">Customer information</h2><div className="grid gap-x-4 sm:grid-cols-2"><div className="sm:col-span-2"><Field k="name" label="Full name" autoComplete="name"/></div><Field k="email" label="Email" type="email" autoComplete="email"/><Field k="phone" label="Phone number" type="tel" inputMode="numeric" maxLength={10} autoComplete="tel-national" placeholder="10-digit mobile"/></div></section>
-  <section className="rounded-2xl bg-white p-6"><h2 className="mb-4 font-medium">Shipping address</h2><div className="grid gap-x-4 sm:grid-cols-2"><div className="sm:col-span-2"><Field k="address" label="Address" autoComplete="street-address"/></div><Field k="city" label="City" autoComplete="address-level2"/>
-   <Field k="state" label="State"><select id="state" value={form.state} onChange={set('state')} onBlur={()=>setTouched(t=>({...t,state:true}))} aria-invalid={!!show('state')} className={`input ${show('state')?'border-red-500':''}`}><option value="">Select state</option>{STATES.map(s=><option key={s}>{s}</option>)}</select></Field>
-   <Field k="pincode" label="Pincode" inputMode="numeric" maxLength={6} autoComplete="postal-code"/></div></section>
+  <section className="rounded-2xl bg-white p-6"><h2 className="mb-4 font-medium">Customer information</h2><div className="grid gap-x-4 sm:grid-cols-2"><div className="sm:col-span-2"><Field ctl={ctl} k="name" label="Full name" autoComplete="name"/></div><Field ctl={ctl} k="email" label="Email" type="email" autoComplete="email"/><Field ctl={ctl} k="phone" label="Phone number" type="tel" inputMode="numeric" maxLength={10} autoComplete="tel-national" placeholder="10-digit mobile"/></div></section>
+  <section className="rounded-2xl bg-white p-6"><h2 className="mb-4 font-medium">Shipping address</h2><div className="grid gap-x-4 sm:grid-cols-2"><div className="sm:col-span-2"><Field ctl={ctl} k="address" label="Address" autoComplete="street-address"/></div><Field ctl={ctl} k="city" label="City" autoComplete="address-level2"/>
+   <Field ctl={ctl} k="state" label="State"><select id="state" value={form.state} onChange={set('state')} onBlur={()=>setTouched(t=>({...t,state:true}))} aria-invalid={!!show('state')} className={`input ${show('state')?'border-red-500':''}`}><option value="">Select state</option>{STATES.map(s=><option key={s}>{s}</option>)}</select></Field>
+   <Field ctl={ctl} k="pincode" label="Pincode" inputMode="numeric" maxLength={6} autoComplete="postal-code"/></div></section>
   {error&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
   <button type="submit" disabled={busy} className="btn-primary w-full py-3.5 text-base lg:hidden">{busy?<><Loader2 className="animate-spin" size={18}/>Processing...</>:<><Lock size={16}/>Pay Now · {$(c.total)}</>}</button></form>
  <aside className="h-fit space-y-3 rounded-2xl bg-white p-6 lg:sticky lg:top-24"><h2 className="font-medium">Order summary</h2><Summary items={c.items} subtotal={c.subtotal} delivery={c.delivery} total={c.total}/>
