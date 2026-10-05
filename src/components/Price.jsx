@@ -1,0 +1,2 @@
+import {formatPrice} from '../utils/productUtils.js';
+export default function Price({price,originalPrice,discount,large}){return <div className="flex flex-wrap items-baseline gap-2"><span className={`font-bold ${large?'text-2xl':'text-base'}`}>{formatPrice(price)}</span>{originalPrice>price&&<><span className="text-sm text-ink/40 line-through">{formatPrice(originalPrice)}</span><span className="rounded bg-brand/10 px-1.5 py-0.5 text-xs font-medium text-brand">{discount}% off</span></>}</div>}

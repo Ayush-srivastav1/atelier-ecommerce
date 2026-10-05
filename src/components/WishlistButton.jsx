@@ -1,0 +1,3 @@
+import {Heart} from 'lucide-react';import {useWishlist} from '../context/WishlistContext.jsx';
+export default function WishlistButton({id,className=''}){const {has,toggle}=useWishlist();const on=has(id);
+return <button type="button" aria-pressed={on} aria-label={on?'Remove from wishlist':'Add to wishlist'} onClick={e=>{e.preventDefault();e.stopPropagation();toggle(id)}} className={`grid h-9 w-9 place-items-center rounded-full bg-white/90 shadow transition hover:scale-105 focus-visible:outline focus-visible:outline-2 ${className}`}><Heart size={18} className={on?'fill-red-500 text-red-500':''}/></button>}
